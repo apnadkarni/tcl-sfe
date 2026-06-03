@@ -41,15 +41,11 @@ TclPostInit(
 {
 #ifdef TCLSFE_HAVE_sqlite
     extern int Sqlite3_Init(Tcl_Interp * interp);
-    if (Sqlite3_Init(interp) == TCL_ERROR) {
-	return TCL_ERROR;
-    }
+    Tcl_StaticLibrary(NULL, "Sqlite3", Sqlite3_Init, NULL);
 #endif
 #ifdef TCLSFE_HAVE_thread
     extern int Thread_Init(Tcl_Interp * interp);
-    if (Thread_Init(interp) == TCL_ERROR) {
-	return TCL_ERROR;
-    }
+    Tcl_StaticLibrary(NULL, "Thread", Thread_Init, NULL);
 #endif
     return TCL_OK;
 }

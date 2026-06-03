@@ -72,16 +72,21 @@ echo TCLSFE_LIBS= >> !STAGINGDIR!\tclsfe_nmake.inc
 
 :build_sqlite
 call :build_pkg sqlite SQLITEDIR || goto :eof
+call :write_pkgindex sqlite3 !SQLITEDIR! !SQLITEDIR:~6! Sqlite3
 
 :build_thread
 call :build_pkg thread THREADDIR || goto :eof
 call :make_dir !STAGINGVFS!\!THREADDIR! || goto :eof
 copy /y !STAGINGDIR!\lib\!THREADDIR!\*.tcl !STAGINGVFS!\!THREADDIR! || goto :eof
+call :write_pkgindex thread !THREADDIR! !THREADDIR:~6! Thread
 
+goto skip_twapi
 :build_twapi
 call :build_pkg twapi TWAPIDIR || goto :eof
 call :make_dir !STAGINGVFS!\!TWAPIDIR! || goto :eof
 copy /y !STAGINGDIR!\lib\!TWAPIDIR!\*.tcl !STAGINGVFS!\!TWAPIDIR! > nul: || goto :eof
+
+:skip_twapi
 
 :build_bi
 pwd
@@ -92,8 +97,10 @@ popd
 :: End of script
 exit /b 0
 
-
 :build_pkg
+:: Builds a single package
+:: %1 is package prefix
+:: %2 is env var to set with directory name
 set PKGSUBDIR=
 for /d %%D in (!PKGSDIR!\%1*) do set PKGSUBDIR=%%~nxD
 if "!PKGSUBDIR!" == "" goto :eof
@@ -108,6 +115,17 @@ echo %1_SUBDIR = !PKGSUBDIR! >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 echo %1_LIBNAME = tcl9$(%1_SUBDIR:.=)s.lib >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 echo TCLSFE_LIBS = $(TCLSFE_LIBS) !STAGINGDIR!\lib\!PKGSUBDIR!\$(%1_LIBNAME) >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 popd
+goto :eof
+
+:write_pkgindex
+:: Generates the pkgIndex.tcl file for a static library
+:: %1 is the package name
+:: %2 is the package directory
+:: %3 is the package version number
+:: %4 is the initialization prefix
+call :make_dir !STAGINGVFS!\%2 || goto :eof
+:: Note we append to the file in case other packages are present
+echo package ifneeded %1 %3 {load {} %4} >> !STAGINGVFS!\%2\pkgIndex.tcl || goto :eof
 goto :eof
 
 :fqn
