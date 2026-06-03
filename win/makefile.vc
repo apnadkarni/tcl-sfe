@@ -1,0 +1,59 @@
+!if "$(STAGINGDIR)" == ""
+STAGINGDIR = ..\staging
+!endif
+TCLSH_NATIVE=..\staging\bin\tclsh91s.exe
+PROJECT=tclsfe
+DOTVERSION=9.1
+
+!include $(TCLDIR)\win\rules-ext.vc
+
+!if exists($(STAGINGDIR)\tclsfe_nmake.inc)
+!include $(STAGINGDIR)\tclsfe_nmake.inc
+!endif
+
+PRJ_OBJS = $(TMP_DIR)\tclSfeMainHook.obj
+PRJ_LIBS = $(TCLSFE_LIBS) user32.lib netapi32.lib
+PRJ_DEFINES = $(PRJ_DEFINES) $(TCLSFE_DEFINES)
+
+TCLFULLVERSION = $(TCL_DOTVERSION)$(TCL_PATCH_LEVEL)
+TCLSCRIPTZIP=$(STAGINGDIR)\lib\$(TCL_ZIP_FILE)
+
+TCLSFERAW = $(OUT_DIR)\tclsfe-raw.exe
+TCLSFE = $(OUT_DIR)\tclsfe.exe
+TCLSFEVFS = $(OUT_DIR)\libtclsfe.vfs
+TCLSFEZIP = $(OUT_DIR)\libtclsfe.zip
+
+DISABLE_TARGET_install = 1
+DISABLE_TARGET_pkgindex = 1
+!include "$(_RULESDIR)\targets.vc"
+
+!message CONNEXECMD: $(CONEXECMD)
+
+tclsfe: $(OUT_DIR)\tclsfe.exe
+
+$(TMP_DIR)\tclSfeMain.obj: $(TCLDIR)\win\tclAppInit.c
+	$(cc32) $(appcflags_nostubs) /DTCL_LOCAL_MAIN_HOOK=TclMainHook /DUNICODE /D_UNICODE \
+	    -Fo$@ $?
+
+$(TCLSFERAW): $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tclsfe.exe.manifest
+	$(CONEXECMD) -stack:2300000 $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj
+	copy $(TMP_DIR)\tclsfe.exe.manifest $(TCLSFE).manifest
+	$(_VC_MANIFEST_EMBED_EXE)
+
+$(TCLSFE): $(TCLSFERAW) $(TCLSFEZIP)
+	$(COPY) /b "$(TCLSFERAW)"+"$(TCLSFEZIP)" "$(TCLSFE)"
+
+$(TCLSFEZIP): $(TCLSCRIPTZIP)
+        -$(RMDIR) "$(TCLSFEVFS)"
+        $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TCLSCRIPTZIP)" "$(TCLSFEVFS)"
+        echo "$(STAGINGDIR)\vfs\" "$(TCLSFEVFS)"
+        $(CPYDIR) "$(STAGINGDIR)\vfs\" "$(TCLSFEVFS)"
+        $(TCLSH_NATIVE) "$(ROOT)/library/zipdir.tcl" "$(TCLSFEVFS)" "$(TCLSFEZIP)"
+
+$(TMP_DIR)\tclsfe.exe.manifest: $(WIN_DIR)\tclsfe.exe.manifest.in
+	@$(NMAKEHLP_NATIVE) -s << $** >$@
+@MACHINE@	  $(MACHINE:IX86=X86)
+@TCL_WIN_VERSION@  $(DOTVERSION).0.0
+<<
+
+pkgindex:

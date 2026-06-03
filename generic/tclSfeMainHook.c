@@ -1,0 +1,71 @@
+/*
+ * tclMainBI.c --
+ *
+ *	Provides a batteries included version of tclsh.
+ *
+ * See the file "license.terms" for information on usage and redistribution of
+ * this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ */
+
+#include "tcl.h"
+#include <windows.h>
+
+#ifdef _WIN32
+MODULE_SCOPE int TclMainHook(int *argc, WCHAR ***argv);
+#else
+MODULE_SCOPE int TclMainHook(int *argc, char ***argv);
+#endif
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * main --
+ *
+ *	This is the main program for the application.
+ *
+ * Results:
+ *	None: Tcl_Main never returns here, so this procedure never returns
+ *	either.
+ *
+ * Side effects:
+ *	Just about anything, since from here we call arbitrary Tcl code.
+ *
+ *----------------------------------------------------------------------
+ */
+
+
+static int
+TclPostInit(
+    Tcl_Interp *interp,
+    void *clientData)
+{
+#ifdef TCLSFE_HAVE_sqlite
+    extern int Sqlite3_Init(Tcl_Interp * interp);
+    if (Sqlite3_Init(interp) == TCL_ERROR) {
+	return TCL_ERROR;
+    }
+#endif
+#ifdef TCLSFE_HAVE_thread
+    extern int Thread_Init(Tcl_Interp * interp);
+    if (Thread_Init(interp) == TCL_ERROR) {
+	return TCL_ERROR;
+    }
+#endif
+    return TCL_OK;
+}
+
+int
+TclMainHook(
+    int *argcPtr,
+#ifdef _WIN32
+    WCHAR ***argvPtr
+#else
+    char ***argv
+#endif
+)
+{
+
+    TclZipfs_AppHook(argcPtr, argvPtr);
+    Tcl_RegisterPostInitProc(TclPostInit, NULL);
+    return 0;					 /* Avoid compiler warning */
+}
