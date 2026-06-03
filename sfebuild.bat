@@ -10,6 +10,7 @@ exit /B 1
 :: Set up default values
 set TCLDIR=tcl
 set STAGINGDIR=staging
+set NMAKE_OPTS=/s /nologo
 
 :parse_args
 if "%~1"=="" goto build
@@ -25,6 +26,10 @@ if "%~1"=="-tcldir" (
     shift
 ) else if "%~1"=="-stagingdir" (
     set "STAGINGDIR=%~2"
+    shift
+) else if "%~1"=="-verbose" (
+    set "NMAKE_OPTS=/nologo"
+    echo on
     shift
 ) else (
     echo Unknown option: %~1
@@ -46,7 +51,7 @@ call :progress Building Tcl
 call :fqn !TCLDIR! TCLDIR
 call :ensure_dir !TCLDIR!\win || goto :eof
 pushd !TCLDIR!\win
-nmake /s /nologo /f makefile.vc OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! shell install-binaries install-libraries || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! shell install-binaries install-libraries || goto :eof
 popd
 
 :build_tk
@@ -55,7 +60,7 @@ if "!TKDIR!" == "" set TKDIR=!TCLDIR!\..\tk
 call :fqn !TKDIR! TKDIR
 call :ensure_dir !TKDIR!\win || goto :eof
 pushd !TKDIR!\win
-nmake /f makefile.vc /s /nologo OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! release install || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! release install || goto :eof
 popd
 
 :build_pkgs
@@ -71,19 +76,17 @@ call :build_pkg sqlite SQLITEDIR || goto :eof
 :build_thread
 call :build_pkg thread THREADDIR || goto :eof
 call :make_dir !STAGINGVFS!\!THREADDIR! || goto :eof
-copy /y !STAGINGDIR!\lib\!THREADDIR!\*.tcl !STAGINGVFS!\!THREADDIR!
+copy /y !STAGINGDIR!\lib\!THREADDIR!\*.tcl !STAGINGVFS!\!THREADDIR! || goto :eof
 
-:: :build_twapi
-:: call :build_pkg twapi TWAPIDIR || goto :eof
-:: ::echo TWAPIDIR=!TWAPIDIR!
-:: call :make_dir !STAGINGVFS!\!TWAPIDIR! || goto :eof
-:: ::copy /y !STAGINGDIR!\lib\!TWAPIDIR!\*.tcl !STAGINGVFS!\!TWAPIDIR!
-:: exit /b 0
+:build_twapi
+call :build_pkg twapi TWAPIDIR || goto :eof
+call :make_dir !STAGINGVFS!\!TWAPIDIR! || goto :eof
+copy /y !STAGINGDIR!\lib\!TWAPIDIR!\*.tcl !STAGINGVFS!\!TWAPIDIR! > nul: || goto :eof
 
 :build_bi
 pwd
 pushd win
-nmake /s /nologo /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs,nostubs
+nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs,nostubs || goto :eof
 popd
 
 :: End of script
@@ -97,8 +100,8 @@ if "!PKGSUBDIR!" == "" goto :eof
 call :progress Building %1 !PKGSUBDIR!
 set "%~2=!PKGSUBDIR!"
 pushd !PKGSDIR!\!PKGSUBDIR!\win
-nmake /s /nologo /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! || goto :eof
-nmake /s /nologo /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! install || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! install || goto :eof
 echo TCLSFE_DEFINES = $(TCLSFE_DEFINES) -DTCLSFE_HAVE_%1 >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 echo %1_SUBDIR = !PKGSUBDIR! >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 ::cd !STAGINGDIR!\!PKGSUBDIR! || goto :eof
