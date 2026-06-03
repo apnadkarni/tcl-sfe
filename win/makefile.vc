@@ -27,8 +27,6 @@ DISABLE_TARGET_install = 1
 DISABLE_TARGET_pkgindex = 1
 !include "$(_RULESDIR)\targets.vc"
 
-!message CONNEXECMD: $(CONEXECMD)
-
 tclsfe: $(OUT_DIR)\tclsfe.exe
 
 $(TMP_DIR)\tclSfeMain.obj: $(TCLDIR)\win\tclAppInit.c
@@ -44,9 +42,8 @@ $(TCLSFE): $(TCLSFERAW) $(TCLSFEZIP)
 	$(COPY) /b "$(TCLSFERAW)"+"$(TCLSFEZIP)" "$(TCLSFE)"
 
 $(TCLSFEZIP): $(TCLSCRIPTZIP)
-        -$(RMDIR) "$(TCLSFEVFS)"
+        -@$(RMDIR) "$(TCLSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TCLSCRIPTZIP)" "$(TCLSFEVFS)"
-        echo "$(STAGINGDIR)\vfs\" "$(TCLSFEVFS)"
         $(CPYDIR) "$(STAGINGDIR)\vfs\" "$(TCLSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/zipdir.tcl" "$(TCLSFEVFS)" "$(TCLSFEZIP)"
 
