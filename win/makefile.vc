@@ -65,7 +65,6 @@ $(TCLSFERAW): $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)
 	$(_VC_MANIFEST_EMBED_EXE)
 
 $(TKSFERAW): $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tksfe.exe.manifest
-        echo GUIEXECMD:$(GUIEXECMD)
 	$(GUIEXECMD) -stack:2300000 $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj
 	copy $(TMP_DIR)\tksfe.exe.manifest $(TKSFERAW).manifest
 	$(_VC_MANIFEST_EMBED_EXE)

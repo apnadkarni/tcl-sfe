@@ -102,6 +102,7 @@ call :write_pkgindex thread !THREADDIR! !THREADDIR:~6! Thread
 :build_twapi
 call :pkg_enabled twapi || goto build_bi
 call :build_pkg twapi TWAPIDIR || goto :eof
+echo TCLSFE_DEFINES = $(TCLSFE_DEFINES) -DTWAPI_STATIC_BUILD >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 call :add_libs advapi32.lib cfgmgr32.lib credui.lib crypt32.lib || goto :eof
 call :add_libs gdi32.lib iphlpapi.lib kernel32.lib mpr.lib || goto :eof
 call :add_libs netapi32.lib ole32.lib oleaut32.lib pdh.lib || goto :eof
