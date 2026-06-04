@@ -59,3 +59,4 @@ staging/*
 Release*
 versions.vc
 compile_flags.txt
+pkgs/
