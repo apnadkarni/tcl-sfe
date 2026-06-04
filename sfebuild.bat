@@ -1,18 +1,25 @@
 @echo off
 setlocal enabledelayedexpansion
 
+if "%CD%\" == "%~dp0" goto check_vc
+echo Please run this batch file from the %~dp0 directory.
+exit /b 1
+
+:check_vc
+:: Need to be running within a Visual Studio prompt
 IF DEFINED VCINSTALLDIR goto setup
 echo "Not in a Visual Studio command prompt."
 exit /B 1
 
 :setup
-
 :: Set up default values
 set TCLDIR=tcl
 set STAGINGDIR=staging
 set NMAKE_OPTS=/s /nologo
 
 :parse_args
+:: Parse options
+
 if "%~1"=="" goto build
 
 if "%~1"=="-tcldir" (
@@ -55,7 +62,7 @@ call :progress Building Tcl
 call :fqn !TCLDIR! TCLDIR
 call :ensure_dir !TCLDIR!\win || goto :eof
 pushd !TCLDIR!\win
-nmake %NMAKE_OPTS% /f makefile.vc OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! shell install-binaries install-libraries || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! shell install-binaries install-libraries || goto :eof
 popd
 
 :build_tk
@@ -64,7 +71,7 @@ if "!TKDIR!" == "" set TKDIR=!TCLDIR!\..\tk
 call :fqn !TKDIR! TKDIR
 call :ensure_dir !TKDIR!\win || goto :eof
 pushd !TKDIR!\win
-nmake %NMAKE_OPTS% /f makefile.vc OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! release install || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! release install || goto :eof
 popd
 
 :build_pkgs
@@ -102,7 +109,7 @@ copy /y !STAGINGLIB!\!TWAPIDIR!\*.tcl !STAGINGVFS!\!TWAPIDIR! > nul: || goto :eo
 :build_bi
 pwd
 pushd win
-nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs,nostubs || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,nostubs || goto :eof
 popd
 
 :: End of script
@@ -118,8 +125,8 @@ if "!PKGSUBDIR!" == "" goto :eof
 call :progress Building %1 !PKGSUBDIR!
 set "%~2=!PKGSUBDIR!"
 pushd !PKGSDIR!\!PKGSUBDIR!\win
-nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! || goto :eof
-nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static,pdbs INSTALLDIR=!STAGINGDIR! install || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static INSTALLDIR=!STAGINGDIR! || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!TCLDIR!" OPTS=static INSTALLDIR=!STAGINGDIR! install || goto :eof
 echo TCLSFE_DEFINES = $(TCLSFE_DEFINES) -DTCLSFE_HAVE_%1 >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 echo %1_SUBDIR = !PKGSUBDIR! >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 ::cd !STAGINGDIR!\!PKGSUBDIR! || goto :eof
