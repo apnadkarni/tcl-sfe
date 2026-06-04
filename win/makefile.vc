@@ -55,6 +55,10 @@ $(TMP_DIR)\tkSfeMain.obj: $(TKDIR)\win\winMain.c
 	$(cc32) $(appcflags_nostubs) /DTK_LOCAL_MAIN_HOOK=TclMainHook /DUNICODE /D_UNICODE \
 	    -Fo$@ $?
 
+!if exists($(STAGINGDIR)\tclsfe_nmake.inc)
+$(TMP_DIR)\tclSfeMainHook.obj: $(STAGINGDIR)\tclsfe_nmake.inc
+!endif
+
 $(TCLSFERAW): $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tclsfe.exe.manifest
 	$(CONEXECMD) -stack:2300000 $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj
 	copy $(TMP_DIR)\tclsfe.exe.manifest $(TCLSFERAW).manifest
@@ -72,13 +76,13 @@ $(TCLSFE): $(TCLSFERAW) $(TCLSFEZIP)
 $(TKSFE): $(TKSFERAW) $(TKSFEZIP)
 	$(COPY) /b "$(TKSFERAW)"+"$(TKSFEZIP)" "$(TKSFE)"
 
-$(TCLSFEZIP): $(TCLSCRIPTZIP)
+$(TCLSFEZIP): $(TCLSCRIPTZIP) .PHONY
         -@$(RMDIR) "$(TCLSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TCLSCRIPTZIP)" "$(TCLSFEVFS)"
         $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TCLSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/zipdir.tcl" "$(TCLSFEVFS)" "$(TCLSFEZIP)"
 
-$(TKSFEZIP): $(TKSCRIPTZIP)
+$(TKSFEZIP): $(TKSCRIPTZIP) .PHONY
         -@$(RMDIR) "$(TKSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TKSCRIPTZIP)" "$(TKSFEVFS)"
         $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TKSFEVFS)"
@@ -96,5 +100,7 @@ $(TMP_DIR)\tksfe.exe.manifest: $(WIN_DIR)\tksfe.exe.manifest.in
 @TCL_WIN_VERSION@ $(DOTVERSION).0.0
 @TK_WIN_VERSION@  $(DOTVERSION).0.0
 <<
+
+.PHONY:
 
 pkgindex:
