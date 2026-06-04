@@ -57,13 +57,13 @@ $(TMP_DIR)\tkSfeMain.obj: $(TKDIR)\win\winMain.c
 
 $(TCLSFERAW): $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tclsfe.exe.manifest
 	$(CONEXECMD) -stack:2300000 $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj
-	copy $(TMP_DIR)\tclsfe.exe.manifest $(TCLSFE).manifest
+	copy $(TMP_DIR)\tclsfe.exe.manifest $(TCLSFERAW).manifest
 	$(_VC_MANIFEST_EMBED_EXE)
 
 $(TKSFERAW): $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tksfe.exe.manifest
         echo GUIEXECMD:$(GUIEXECMD)
 	$(GUIEXECMD) -stack:2300000 $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj
-	copy $(TMP_DIR)\tksfe.exe.manifest $(TKSFE).manifest
+	copy $(TMP_DIR)\tksfe.exe.manifest $(TKSFERAW).manifest
 	$(_VC_MANIFEST_EMBED_EXE)
 
 $(TCLSFE): $(TCLSFERAW) $(TCLSFEZIP)
