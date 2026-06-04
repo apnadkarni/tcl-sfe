@@ -40,11 +40,15 @@ goto parse_args
 
 :build
 call :fqn !STAGINGDIR! STAGINGDIR
+:: mkdir may fail if the path was a file. Check it's a directory.
 call :make_dir !STAGINGDIR! || goto :eof
+call :ensure_dir !STAGINGDIR! || goto :eof
 set STAGINGVFS=!STAGINGDIR!\vfs
 call :make_dir !STAGINGVFS! || goto :eof
-:: mkdir may fail if the path was a file. Check it's a directory.
-call :ensure_dir !STAGINGDIR! || goto :eof
+call :ensure_dir !STAGINGVFS! || goto :eof
+set STAGINGLIB=!STAGINGDIR!\lib
+call :make_dir !STAGINGLIB! || goto :eof
+call :ensure_dir !STAGINGLIB! || goto :eof
 
 :build_tcl
 call :progress Building Tcl
@@ -77,16 +81,23 @@ call :write_pkgindex sqlite3 !SQLITEDIR! !SQLITEDIR:~6! Sqlite3
 :build_thread
 call :build_pkg thread THREADDIR || goto :eof
 call :make_dir !STAGINGVFS!\!THREADDIR! || goto :eof
-copy /y !STAGINGDIR!\lib\!THREADDIR!\*.tcl !STAGINGVFS!\!THREADDIR! || goto :eof
+copy /y !STAGINGLIB!\!THREADDIR!\*.tcl !STAGINGVFS!\!THREADDIR! || goto :eof
 call :write_pkgindex thread !THREADDIR! !THREADDIR:~6! Thread
 
-goto skip_twapi
 :build_twapi
 call :build_pkg twapi TWAPIDIR || goto :eof
+call :add_libs advapi32.lib cfgmgr32.lib credui.lib crypt32.lib || goto :eof
+call :add_libs gdi32.lib iphlpapi.lib kernel32.lib mpr.lib || goto :eof
+call :add_libs netapi32.lib ole32.lib oleaut32.lib pdh.lib || goto :eof
+call :add_libs powrprof.lib psapi.lib rpcrt4.lib || goto :eof
+call :add_libs secur32.lib setupapi.lib shell32.lib || goto :eof
+call :add_libs shlwapi.lib user32.lib userenv.lib || goto :eof
+call :add_libs uxtheme.lib version.lib winmm.lib || goto :eof
+call :add_libs winspool.lib wintrust.lib ws2_32.lib  || goto :eof
+call :add_libs wtsapi32.lib || goto :eof
+call :add_libs !STAGINGLIB!\libdyncall_s.lib !STAGINGLIB!\libdynload_s.lib !STAGINGLIB!\libdyncallback_s.lib
 call :make_dir !STAGINGVFS!\!TWAPIDIR! || goto :eof
-copy /y !STAGINGDIR!\lib\!TWAPIDIR!\*.tcl !STAGINGVFS!\!TWAPIDIR! > nul: || goto :eof
-
-:skip_twapi
+copy /y !STAGINGLIB!\!TWAPIDIR!\*.tcl !STAGINGVFS!\!TWAPIDIR! > nul: || goto :eof
 
 :build_bi
 pwd
@@ -113,7 +124,7 @@ echo TCLSFE_DEFINES = $(TCLSFE_DEFINES) -DTCLSFE_HAVE_%1 >> !STAGINGDIR!\tclsfe_
 echo %1_SUBDIR = !PKGSUBDIR! >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 ::cd !STAGINGDIR!\!PKGSUBDIR! || goto :eof
 echo %1_LIBNAME = tcl9$(%1_SUBDIR:.=)s.lib >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
-echo TCLSFE_LIBS = $(TCLSFE_LIBS) !STAGINGDIR!\lib\!PKGSUBDIR!\$(%1_LIBNAME) >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
+call :add_libs !STAGINGLIB!\$(%1_LIBNAME) || goto :eof
 popd
 goto :eof
 
@@ -151,6 +162,10 @@ goto :eof
 if not exist "%~1" mkdir "%~1" || goto :eof
 goto :eof
 
+:add_libs
+:: Add libraries for linking
+echo>>!STAGINGDIR!\tclsfe_nmake.inc TCLSFE_LIBS = $(TCLSFE_LIBS) %* || goto :eof
+goto :eof
 
 :usage
 echo.

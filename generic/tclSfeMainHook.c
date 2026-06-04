@@ -47,6 +47,10 @@ TclPostInit(
     extern int Thread_Init(Tcl_Interp * interp);
     Tcl_StaticLibrary(NULL, "Thread", Thread_Init, NULL);
 #endif
+#ifdef TCLSFE_HAVE_twapi
+    extern int Twapi_Init(Tcl_Interp * interp);
+    Tcl_StaticLibrary(NULL, "Twapi", Twapi_Init, NULL);
+#endif
     return TCL_OK;
 }
 
