@@ -1,3 +1,4 @@
+:: sfebuild -help for usage.
 @echo off
 setlocal enabledelayedexpansion
 
@@ -16,6 +17,7 @@ exit /B 1
 set TCLDIR=tcl
 set STAGINGDIR=staging
 set NMAKE_OPTS=/s /nologo
+set PKGS=all
 
 :parse_args
 :: Parse options
@@ -34,10 +36,15 @@ if "%~1"=="-tcldir" (
 ) else if "%~1"=="-stagingdir" (
     set "STAGINGDIR=%~2"
     shift
+) else if "%~1"=="-pkgs" (
+    set "PKGS=%~2"
+    shift
 ) else if "%~1"=="-verbose" (
     set "NMAKE_OPTS=/nologo"
     echo on
     shift
+) else if "%~1"=="-help" (
+    goto usage
 ) else (
     echo Unknown option: %~1
     goto usage
@@ -50,9 +57,8 @@ call :fqn !STAGINGDIR! STAGINGDIR
 :: mkdir may fail if the path was a file. Check it's a directory.
 call :make_dir !STAGINGDIR! || goto :eof
 call :ensure_dir !STAGINGDIR! || goto :eof
-set STAGINGVFS=!STAGINGDIR!\vfs
-call :make_dir !STAGINGVFS! || goto :eof
-call :ensure_dir !STAGINGVFS! || goto :eof
+set STAGINGVFS=!STAGINGDIR!\sfe.vfs
+call :empty_dir !STAGINGVFS! || goto :eof
 set STAGINGLIB=!STAGINGDIR!\lib
 call :make_dir !STAGINGLIB! || goto :eof
 call :ensure_dir !STAGINGLIB! || goto :eof
@@ -82,16 +88,19 @@ echo TCLSFE_DEFINES= > !STAGINGDIR!\tclsfe_nmake.inc
 echo TCLSFE_LIBS= >> !STAGINGDIR!\tclsfe_nmake.inc
 
 :build_sqlite
+call :pkg_enabled sqlite || goto build_thread
 call :build_pkg sqlite SQLITEDIR || goto :eof
 call :write_pkgindex sqlite3 !SQLITEDIR! !SQLITEDIR:~6! Sqlite3
 
 :build_thread
+call :pkg_enabled thread || goto build_twapi
 call :build_pkg thread THREADDIR || goto :eof
 call :make_dir !STAGINGVFS!\!THREADDIR! || goto :eof
 copy /y !STAGINGLIB!\!THREADDIR!\*.tcl !STAGINGVFS!\!THREADDIR! || goto :eof
 call :write_pkgindex thread !THREADDIR! !THREADDIR:~6! Thread
 
 :build_twapi
+call :pkg_enabled twapi || goto build_bi
 call :build_pkg twapi TWAPIDIR || goto :eof
 call :add_libs advapi32.lib cfgmgr32.lib credui.lib crypt32.lib || goto :eof
 call :add_libs gdi32.lib iphlpapi.lib kernel32.lib mpr.lib || goto :eof
@@ -114,6 +123,14 @@ popd
 
 :: End of script
 exit /b 0
+
+:pkg_enabled
+:: Returns 0 if %PKGS% contains "all" or %1 and 1 otherwise
+for %%f in (%PKGS%) do (
+    if "%%f" == "all" exit /b 0
+    if "%%f" == "%1" exit /b 0
+)
+exit /b 1
 
 :build_pkg
 :: Builds a single package
@@ -155,9 +172,18 @@ exit /b 0
 :: Ensures the passed path is a directory, otherwise print error
 :: and return error code 1
 if not exist "%1\" (
-echo Error: not a directory: %1
-exit /b 1
+    echo Error: not a directory: %1
+    exit /b 1
 )
+exit /b 0
+
+:empty_dir
+:: Ensures %1 is an empty directory, creating if necessary
+if exist "%1" (
+   call :ensure_dir %1 || goto :eof
+)
+rd /s /q %1 >NUL
+md %d
 exit /b 0
 
 :progress
@@ -176,9 +202,10 @@ goto :eof
 
 :usage
 echo.
-echo Usage: %0 [-tcldir TCLDIR] -tkdir TKDIR -pkgsdir PKGSDIR
+echo Usage: %0 [-tcldir TCLDIR] -tkdir TKDIR -pkgsdir PKGSDIR -pkgs PKGS
 echo.
 echo TCLDIR defaults to .\tcl
 echo TKDIR defaults to TCLDIR\..\tk
 echo PKGSDIR defaults to TCLDIR\pkgs
+echo PKGS should be list of packages to include or "all" (default)
 exit /b 1

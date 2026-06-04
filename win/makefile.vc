@@ -75,13 +75,13 @@ $(TKSFE): $(TKSFERAW) $(TKSFEZIP)
 $(TCLSFEZIP): $(TCLSCRIPTZIP)
         -@$(RMDIR) "$(TCLSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TCLSCRIPTZIP)" "$(TCLSFEVFS)"
-        $(CPYDIR) "$(STAGINGDIR)\vfs\" "$(TCLSFEVFS)"
+        $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TCLSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/zipdir.tcl" "$(TCLSFEVFS)" "$(TCLSFEZIP)"
 
 $(TKSFEZIP): $(TKSCRIPTZIP)
         -@$(RMDIR) "$(TKSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TKSCRIPTZIP)" "$(TKSFEVFS)"
-        $(CPYDIR) "$(STAGINGDIR)\vfs\" "$(TKSFEVFS)"
+        $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TKSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/library/zipdir.tcl" "$(TKSFEVFS)" "$(TKSFEZIP)"
 
 $(TMP_DIR)\tclsfe.exe.manifest: $(WIN_DIR)\tclsfe.exe.manifest.in
