@@ -15,7 +15,7 @@ NEED_TK=1
 PRJ_OBJS = $(TMP_DIR)\tclSfeMainHook.obj
 PRJ_LIBS = $(TCLSFE_LIBS) netapi32.lib gdi32.lib user32.lib userenv.lib \
         winspool.lib shell32.lib ole32.lib uuid.lib oleacc.lib usp10.lib \
-        dwmapi.lib
+        dwmapi.lib msimg32.lib
 
 PRJ_DEFINES = $(PRJ_DEFINES) $(TCLSFE_DEFINES)
 
