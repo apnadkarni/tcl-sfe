@@ -1,5 +1,5 @@
 :: sfebuild -help for usage.
-@echo off
+@echo on
 setlocal enabledelayedexpansion
 
 if "%CD%\" == "%~dp0" goto check_vc
@@ -79,7 +79,7 @@ popd
 
 :build_tk
 call :progress Building Tk
-call :ensure_dir !SFETKROOT!\win || goto :eof
+call :ensure_dir !SFETKROOT!\win || echo ERROR: Tk not found. && goto :usage
 pushd !SFETKROOT!\win
 nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! release install || goto :eof
 popd
@@ -104,7 +104,27 @@ call :write_pkgindex thread !THREADDIR! !THREADDIR:~6! Thread
 :build_tdbc
 call :pkg_enabled tdbc || goto build_twapi
 call :build_pkg tdbc TDBCDIR || goto :eof
-call :write_pkgindex tdbc !TDBCDIR! !TDBCDIR:~4! Tdbc
+set "TDBCSTUBLIB=!STAGINGLIB!\!TDBCDIR!\tdbcstub.lib"
+if exist "!TDBCSTUBLIB!" copy /y "!TDBCSTUBLIB!" "!STAGINGLIB!" || echo Could not copy tdbcstub.lib && goto :eof
+call :make_dir !STAGINGVFS!\!TDBCDIR! || goto :eof
+copy /y !STAGINGLIB!\!TDBCDIR!\*.tcl !STAGINGVFS!\!TDBCDIR! || goto :eof
+call :make_dir !STAGINGVFS!\!TDBCDIR! || goto :eof
+echo package ifneeded tdbc !TDBCDIR:~4! [list apply {dir { > !STAGINGVFS!\!TDBCDIR!\pkgIndex.tcl
+echo     load {} Tdbc >> !STAGINGVFS!\!TDBCDIR!\pkgIndex.tcl
+echo     source [file join $dir tdbc.tcl] >> !STAGINGVFS!\!TDBCDIR!\pkgIndex.tcl
+echo }} $dir] >> !STAGINGVFS!\!TDBCDIR!\pkgIndex.tcl
+:: tdbc::odbc
+call :build_pkg tdbcodbc TDBCODBCDIR || goto :eof
+call :make_dir !STAGINGVFS!\!TDBCODBCDIR! || goto :eof
+copy /y !STAGINGLIB!\!TDBCODBCDIR!\*.tcl !STAGINGVFS!\!TDBCODBCDIR! || goto :eof
+call :make_dir !STAGINGVFS!\!TDBCODBCDIR! || goto :eof
+echo package ifneeded tdbc::odbc !TDBCODBCDIR:~8! [list apply {dir { > !STAGINGVFS!\!TDBCODBCDIR!\pkgIndex.tcl
+echo     source [file join $dir tdbcodbc.tcl] >> !STAGINGVFS!\!TDBCODBCDIR!\pkgIndex.tcl
+echo     load {} Tdbcodbc >> !STAGINGVFS!\!TDBCODBCDIR!\pkgIndex.tcl
+echo }} $dir] >> !STAGINGVFS!\!TDBCODBCDIR!\pkgIndex.tcl
+
+
+call :add_libs "!STAGINGLIB!\tdbcstub.lib"
 
 :build_twapi
 call :pkg_enabled twapi || goto build_bi
@@ -150,8 +170,8 @@ if "!PKGSUBDIR!" == "" goto :eof
 call :progress Building %1 !PKGSUBDIR!
 set "%~2=!PKGSUBDIR!"
 pushd !PKGSDIR!\!PKGSUBDIR!\win
-nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! || goto :eof
-nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! install || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! NMAKEHLP_NATIVE="!STAGINGDIR!\lib\nmake\nmakehlp.exe" || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! NMAKEHLP_NATIVE="!STAGINGDIR!\lib\nmake\nmakehlp.exe" install || goto :eof
 echo TCLSFE_DEFINES = $(TCLSFE_DEFINES) -DTCLSFE_HAVE_%1 >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 echo %1_SUBDIR = !PKGSUBDIR! >> !STAGINGDIR!\tclsfe_nmake.inc || goto :eof
 ::cd !STAGINGDIR!\!PKGSUBDIR! || goto :eof
@@ -168,7 +188,7 @@ goto :eof
 :: %4 is the initialization prefix
 call :make_dir !STAGINGVFS!\%2 || goto :eof
 :: Note we append to the file in case other packages are present
-echo package ifneeded %1 %3 {load {} %4} >> !STAGINGVFS!\%2\pkgIndex.tcl || goto :eof
+echo package ifneeded %1 %3 {load {} %4}>> !STAGINGVFS!\%2\pkgIndex.tcl || goto :eof
 exit /b 0
 
 :fqn
@@ -248,5 +268,7 @@ echo     PKGSDIR Directory containing packages (default TCLDIR\pkgs)
 echo     PKGS    List of one or more of the supported packages to include
 echo             or "all" (default). The directory for each package should
 echo             be the name of the package followed by an optional version
-echo             (similar to the pkgs directory in the Tcl distribution)
+echo             (similar to the pkgs directory in the Tcl distribution).
+echo Supported packages: sqlite3, thread, tdbc and twapi. The tdbc package
+echo includes tdbc::odbc.
 exit /b 1

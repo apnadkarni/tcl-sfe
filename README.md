@@ -32,6 +32,14 @@ where
     TKDIR is the Tk source directory defaults to TCLDIR\..\tk
     PKGSDIR is the directory containing packages and defaults to TCLDIR\pkgs
     PKGS should be list of packages to include or "all" (default)
+
+```
+
+For example, assuming other directories are in their default location relative
+to Tcl,
+
+```
+c:\src\tcl-sfe>sfebuild -tcldir c:\src\tcltk\91b0\tcl
 ```
 
 ## Adding new extensions

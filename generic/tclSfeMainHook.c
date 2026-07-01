@@ -51,6 +51,10 @@ TclPostInit(
     extern int Tdbc_Init(Tcl_Interp * interp);
     Tcl_StaticLibrary(NULL, "Tdbc", Tdbc_Init, NULL);
 #endif
+#ifdef TCLSFE_HAVE_tdbcodbc
+    extern int Tdbcodbc_Init(Tcl_Interp * interp);
+    Tcl_StaticLibrary(NULL, "Tdbcodbc", Tdbcodbc_Init, NULL);
+#endif
 #ifdef TCLSFE_HAVE_twapi
     extern int Twapi_Init(Tcl_Interp * interp);
     Tcl_StaticLibrary(NULL, "Twapi", Twapi_Init, NULL);
