@@ -63,26 +63,28 @@ set STAGINGLIB=!STAGINGDIR!\lib
 call :make_dir !STAGINGLIB! || goto :eof
 call :ensure_dir !STAGINGLIB! || goto :eof
 
+call :fqn !SFETCLROOT! SFETCLROOT
+if "!SFETKROOT!" == "" set SFETKROOT=!SFETCLROOT!\..\tk
+call :fqn !SFETKROOT! SFETKROOT
+if "!PKGSDIR!" == "" set PKGSDIR=!SFETCLROOT!\pkgs
+call :fqn !PKGSDIR! PKGSDIR
+
 :build_tcl
 call :progress Building Tcl
 call :fqn !SFETCLROOT! SFETCLROOT
-call :ensure_dir !SFETCLROOT!\win || goto :eof
+call :ensure_dir !SFETCLROOT!\win || echo ERROR: Tcl not found. && goto :usage
 pushd !SFETCLROOT!\win
 nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! shell install-binaries install-libraries || goto :eof
 popd
 
 :build_tk
 call :progress Building Tk
-if "!SFETKROOT!" == "" set SFETKROOT=!SFETCLROOT!\..\tk
-call :fqn !SFETKROOT! SFETKROOT
 call :ensure_dir !SFETKROOT!\win || goto :eof
 pushd !SFETKROOT!\win
 nmake %NMAKE_OPTS% /f makefile.vc OPTS=static INSTALLDIR=!STAGINGDIR! release install || goto :eof
 popd
 
 :build_pkgs
-if "!PKGSDIR!" == "" set PKGSDIR=!SFETCLROOT!\pkgs
-call :fqn !PKGSDIR! PKGSDIR
 call :ensure_dir !PKGSDIR! || goto :eof
 echo TCLSFE_DEFINES= > !STAGINGDIR!\tclsfe_nmake.inc
 echo TCLSFE_LIBS= >> !STAGINGDIR!\tclsfe_nmake.inc
@@ -93,11 +95,16 @@ call :build_pkg sqlite SQLITEDIR || goto :eof
 call :write_pkgindex sqlite3 !SQLITEDIR! !SQLITEDIR:~6! Sqlite3
 
 :build_thread
-call :pkg_enabled thread || goto build_twapi
+call :pkg_enabled thread || goto build_tdbc
 call :build_pkg thread THREADDIR || goto :eof
 call :make_dir !STAGINGVFS!\!THREADDIR! || goto :eof
 copy /y !STAGINGLIB!\!THREADDIR!\*.tcl !STAGINGVFS!\!THREADDIR! || goto :eof
 call :write_pkgindex thread !THREADDIR! !THREADDIR:~6! Thread
+
+:build_tdbc
+call :pkg_enabled tdbc || goto build_twapi
+call :build_pkg tdbc TDBCDIR || goto :eof
+call :write_pkgindex tdbc !TDBCDIR! !TDBCDIR:~4! Tdbc
 
 :build_twapi
 call :pkg_enabled twapi || goto build_bi
@@ -137,8 +144,8 @@ exit /b 1
 :: Builds a single package
 :: %1 is package prefix
 :: %2 is env var to set with directory name
-set PKGSUBDIR=
-for /d %%D in (!PKGSDIR!\%1*) do set PKGSUBDIR=%%~nxD
+set PKGSUBDIR=%3
+call :find_pkg_dir %1 PKGSUBDIR || goto :eof
 if "!PKGSUBDIR!" == "" goto :eof
 call :progress Building %1 !PKGSUBDIR!
 set "%~2=!PKGSUBDIR!"
@@ -162,11 +169,40 @@ goto :eof
 call :make_dir !STAGINGVFS!\%2 || goto :eof
 :: Note we append to the file in case other packages are present
 echo package ifneeded %1 %3 {load {} %4} >> !STAGINGVFS!\%2\pkgIndex.tcl || goto :eof
-goto :eof
+exit /b 0
 
 :fqn
 :: Fully qualifies the path in %1 and sets %2 to the qualified path.
 set "%~2=%~f1"
+exit /b 0
+
+
+:find_pkg_dir
+:: Find a package directory by prefix, matching only where the match
+:: is for the entire prefix or the character after the prefix is a digit (version)
+:: %1 - prefix to search for
+:: %2 - variable to set to the found directory name
+if exist "%~1\" (
+    set "%~2=%~1"
+    exit /b 0
+)
+set "SUBDIR="
+for /d %%D in (!PKGSDIR!\%1*) do (
+    set "CANDIDATE=%%~nxD"
+    set "SUFFIX=!CANDIDATE:%1=!"
+    echo !SUFFIX! | findstr /r "^[0-9]" >nul && (
+        if defined SUBDIR (
+            echo Error: multiple directories match prefix: %1
+            exit /b 2
+        )
+        set "SUBDIR=%%~nxD"
+    )
+)
+if "!SUBDIR!"=="" (
+echo Error: no directory found for prefix: %1
+exit /b 1
+)
+set "%~2=%SUBDIR%"
 exit /b 0
 
 :ensure_dir
@@ -184,7 +220,7 @@ if exist "%1" (
    call :ensure_dir %1 || goto :eof
 )
 rd /s /q %1 >NUL
-md %d
+md %1
 exit /b 0
 
 :progress
@@ -202,11 +238,15 @@ echo>>!STAGINGDIR!\tclsfe_nmake.inc TCLSFE_LIBS = $(TCLSFE_LIBS) %* || goto :eof
 goto :eof
 
 :usage
-echo.
-echo Usage: %0 [-tcldir TCLDIR] -tkdir TKDIR -pkgsdir PKGSDIR -pkgs PKGS
-echo.
-echo TCLDIR defaults to .\tcl
-echo TKDIR defaults to TCLDIR\..\tk
-echo PKGSDIR defaults to TCLDIR\pkgs
-echo PKGS should be list of packages to include or "all" (default)
+echo Usage:
+echo     %0 [-tcldir TCLDIR] [-tkdir TKDIR] [-pkgsdir PKGSDIR] [-pkgs PKGS]
+echo     %0 -help
+echo where
+echo     TCLDIR  Tcl source directory (default .\tcl)
+echo     TKDIR   Tk source directory (default TCLDIR\..\tk)
+echo     PKGSDIR Directory containing packages (default TCLDIR\pkgs)
+echo     PKGS    List of one or more of the supported packages to include
+echo             or "all" (default). The directory for each package should
+echo             be the name of the package followed by an optional version
+echo             (similar to the pkgs directory in the Tcl distribution)
 exit /b 1
