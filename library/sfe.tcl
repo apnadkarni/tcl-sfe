@@ -42,7 +42,7 @@ oo::class create sfe::SfeMaker {
         # Copies the given path to a directory in the Tcl module search path.
         # tmPath may be either a directory or a file.
         lassign [split [info tclversion] .] major minor
-        set destDir [file join [getVfsDir] tcl$major tcl$major$minor]
+        set destDir [file join [my getVfsDir] tcl$major $major.$minor]
         if {![file exists destDir]} {
             file mkdir $destDir
         }
@@ -94,7 +94,7 @@ proc sfe::make {outPath paths} {
                     $sfe addPackage $path
                 }
                 file {
-                    if {[string equal -nocase [file extension $path] eq ".tm"]} {
+                    if {[string equal -nocase [file extension $path] ".tm"]} {
                         $sfe addModule $path
                     } else {
                         $sfe addPath $path [file tail $path]
