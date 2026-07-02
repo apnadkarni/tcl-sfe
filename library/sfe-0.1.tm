@@ -78,13 +78,13 @@ oo::class create sfe::SfeMaker {
     }
 }
 
-proc sfe::make {outPath paths} {
+proc sfe::make {outPath args} {
     # Creates a new single-file executable from the current one with the
     # addition of paths. If a path is a directory, it is copied along with
     # its content to the top level of the vfs. If an ordinary file, it is
     # copied to a directory in Tcl module path if it has a .tm extension
     # or the top level of the vfs.
-    set paths [lsort -unique [lmap path $paths {file normalize $path}]]
+    set paths [lsort -unique [lmap path $args {file normalize $path}]]
     set sfe [SfeMaker new]
     try {
         foreach path $paths {
