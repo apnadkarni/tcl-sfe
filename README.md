@@ -23,16 +23,20 @@ and `tksfe.exe` under the release subdirectories of the `win` directory.
 The `-help` option will print instructions.
 
 ```
-C:\src\tcl-sfe>sfebuild -help
+c:\src\tcl-sfe>sfebuild -help
 Usage:
     sfebuild [-tcldir TCLDIR] [-tkdir TKDIR] [-pkgsdir PKGSDIR] [-pkgs PKGS]
     sfebuild -help
 where
-    TCLDIR is the Tcl source directory and defaults to .\tcl
-    TKDIR is the Tk source directory defaults to TCLDIR\..\tk
-    PKGSDIR is the directory containing packages and defaults to TCLDIR\pkgs
-    PKGS should be list of packages to include or "all" (default)
-
+    TCLDIR  Tcl source directory (default .\tcl)
+    TKDIR   Tk source directory (default TCLDIR\..\tk)
+    PKGSDIR Directory containing packages (default TCLDIR\pkgs)
+    PKGS    List of one or more of the supported packages to include
+            or "all" (default). The directory for each package should
+            be the name of the package followed by an optional version
+            (similar to the pkgs directory in the Tcl distribution).
+Supported packages: sqlite3, thread, tdbc and twapi. The tdbc package
+only includes tdbc::odbc.
 ```
 
 For example, assuming other directories are in their default location relative

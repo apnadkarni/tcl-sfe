@@ -1,5 +1,5 @@
 :: sfebuild -help for usage.
-@echo on
+@echo off
 setlocal enabledelayedexpansion
 
 if "%CD%\" == "%~dp0" goto check_vc

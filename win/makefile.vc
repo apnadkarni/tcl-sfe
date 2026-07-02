@@ -77,15 +77,15 @@ $(TKSFE): $(TKSFERAW) $(TKSFEZIP)
 
 $(TCLSFEZIP): $(TCLSCRIPTZIP) .PHONY
         -@$(RMDIR) "$(TCLSFEVFS)"
-        $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TCLSCRIPTZIP)" "$(TCLSFEVFS)"
+        $(TCLSH_NATIVE) "$(ROOT)/tools/unzip.tcl" "$(TCLSCRIPTZIP)" "$(TCLSFEVFS)"
         $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TCLSFEVFS)"
-        $(TCLSH_NATIVE) "$(ROOT)/library/zipdir.tcl" "$(TCLSFEVFS)" "$(TCLSFEZIP)"
+        $(TCLSH_NATIVE) "$(ROOT)/tools/zipdir.tcl" "$(TCLSFEVFS)" "$(TCLSFEZIP)"
 
 $(TKSFEZIP): $(TKSCRIPTZIP) .PHONY
         -@$(RMDIR) "$(TKSFEVFS)"
-        $(TCLSH_NATIVE) "$(ROOT)/library/unzip.tcl" "$(TKSCRIPTZIP)" "$(TKSFEVFS)"
+        $(TCLSH_NATIVE) "$(ROOT)/tools/unzip.tcl" "$(TKSCRIPTZIP)" "$(TKSFEVFS)"
         $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TKSFEVFS)"
-        $(TCLSH_NATIVE) "$(ROOT)/library/zipdir.tcl" "$(TKSFEVFS)" "$(TKSFEZIP)"
+        $(TCLSH_NATIVE) "$(ROOT)/tools/zipdir.tcl" "$(TKSFEVFS)" "$(TKSFEZIP)"
 
 $(TMP_DIR)\tclsfe.exe.manifest: $(WIN_DIR)\tclsfe.exe.manifest.in
 	@$(NMAKEHLP_NATIVE) -s << $** >$@
