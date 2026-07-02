@@ -79,12 +79,16 @@ $(TCLSFEZIP): $(TCLSCRIPTZIP) .PHONY
         -@$(RMDIR) "$(TCLSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/tools/unzip.tcl" "$(TCLSCRIPTZIP)" "$(TCLSFEVFS)"
         $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TCLSFEVFS)"
+        $(MKDIR) "$(TCLSFEVFS)\tcl9\$(DOTVERSION)"
+        $(COPY) /y "$(ROOT)\library\sfe*.tm" "$(TCLSFEVFS)\tcl9\$(DOTVERSION)\"
         $(TCLSH_NATIVE) "$(ROOT)/tools/zipdir.tcl" "$(TCLSFEVFS)" "$(TCLSFEZIP)"
 
 $(TKSFEZIP): $(TKSCRIPTZIP) .PHONY
         -@$(RMDIR) "$(TKSFEVFS)"
         $(TCLSH_NATIVE) "$(ROOT)/tools/unzip.tcl" "$(TKSCRIPTZIP)" "$(TKSFEVFS)"
         $(CPYDIR) "$(STAGINGDIR)\sfe.vfs\" "$(TKSFEVFS)"
+        $(MKDIR) "$(TKSFEVFS)\tcl9\$(DOTVERSION)"
+        $(COPY) /y "$(ROOT)\library\sfe*.tm" "$(TKSFEVFS)\tcl9\$(DOTVERSION)\"
         $(TCLSH_NATIVE) "$(ROOT)/tools/zipdir.tcl" "$(TKSFEVFS)" "$(TKSFEZIP)"
 
 $(TMP_DIR)\tclsfe.exe.manifest: $(WIN_DIR)\tclsfe.exe.manifest.in
