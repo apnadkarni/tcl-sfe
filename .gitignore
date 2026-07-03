@@ -56,7 +56,7 @@ dkms.conf
 
 # Project specific files
 staging/*
-Release*
+Release*/*
 versions.vc
 compile_flags.txt
 pkgs/

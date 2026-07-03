@@ -1,4 +1,4 @@
-# Single-file Tcl executables
+# Single-file Tcl executables (v0.1)
 
 This repository hosts single file Tcl/Tk executables for Windows and a build
 system to create and customize them. These are completely statically linked
@@ -42,13 +42,14 @@ desired. Further, SFE's can be customized by adding
 ## Running SFE executables
 
 SFE programs are self-contained. They can be copied anywhere and run without any
-installation or unpackaging step. In other respects, unless **customized*, they
+installation or unpackaging step. In other respects, unless **customized**, they
 are identical to their standard counterparts including handling of command line
 arguments, reading of the `tclshrc.tcl` and `wishrc.tcl` files at startup etc.
 with one difference: the default paths set up for searching packages via
-`auto_path` and for Tcl modules via `tcl::tm::path` is limited to the SFE
+`auto_path` and for Tcl modules via `tcl::tm::path` are limited to the SFE
 internal file system. This is to avoid interference from external sources.
-If desired, the values can be changed from within your own scripts.
+If desired, the values can be changed from within your own scripts or through
+`_sfeinit.tcl` (see later).
 
 ## Adding a package or module
 
@@ -81,8 +82,8 @@ all packages in the `tcllib` and `tklib` distributions.
 
 Note the package directories must be in their installed form, not the source
 repositories (unless they have the same structure). Further, the new SFE is
-always based on the one in which the commands are run so for a `wish` equivalent
-that the `sfe::make` must be run in `tksfe.exe`, not `tclsfe.exe`.
+always based on the one in which the commands are run so for a `wish` equivalent,
+the `sfe::make` must be run in `tksfe.exe`, not `tclsfe.exe`.
 
 Packages with DLL components may added in exactly the same manner as described
 above. However, in this case the included DLL components will be written to

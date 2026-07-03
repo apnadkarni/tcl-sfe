@@ -147,6 +147,7 @@ copy /y !STAGINGLIB!\!TWAPIDIR!\*.tcl !STAGINGVFS!\!TWAPIDIR! > nul: || goto :eo
 pwd
 pushd win
 nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!SFETCLROOT!" TKDIR="!SFETKROOT!" OPTS=static,nostubs || goto :eof
+nmake %NMAKE_OPTS% /f makefile.vc TCLDIR="!SFETCLROOT!" TKDIR="!SFETKROOT!" OPTS=static,nostubs install || goto :eof
 popd
 
 :: End of script
