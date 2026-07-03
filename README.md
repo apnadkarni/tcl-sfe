@@ -14,23 +14,22 @@ and `wish.exe` that include the following extensions by default:
 - twapi
 
 The build system allows omission of any of these if smaller executables are
-desired. At the same time, the built-in `sfe` package simplifies creation of new
-executables with that include additional packages and extensions.
+desired. Further, SFE's can be customized by
+
+- adding additional packages or Tcl modules
+
+- addition of a main script that implements a complete application
+
+- adding statically linked extensions
 
 ## Running SFE executables
 
 SFE programs are self-contained. They can be copied anywhere and run without any
-installation or unpackaging step. In other respects, unless customized, they are
-identical to their standard counterparts including handling of command line
+installation or unpackaging step. In other respects, unless **customized*, they
+are identical to their standard counterparts including handling of command line
 arguments, reading of the `tclshrc.tcl` and `wishrc.tcl` files at startup etc..
 
-## Building custom SFE's
-
-SFE's can be customized by adding additional packages and extensions in two
-ways. The choice depends on whether the package is pure Tcl scripts or includes
-DLL components.
-
-### Adding a pure-Tcl package
+## Adding a package or module
 
 Both `tclsfe` and `tksfe` include a built-in package `sfe` that makes it easy
 to create new SFE's that include additional packages. The easiest way is via
@@ -64,13 +63,30 @@ repositories (unless they have the same structure). Further, the new SFE is
 always based on the one in which the commands are run so for a `wish` equivalent
 that the `sfe::make` must be run in `tksfe.exe`, not `tclsfe.exe`.
 
-### Adding packages with DLL's
-
 Packages with DLL components may added in exactly the same manner as described
 above. However, in this case the included DLL components will be written to
 disk at runtime when the package is loaded. To avoid this, you may compile and
 build your own modified SFE with the extension statically linked as described
-later.
+below in **Adding static extensions**.
+
+## Building a custom application
+
+By default, the SFE's behave like the standard `tclsh` or `wish` shells.
+You can make a custom SFE that implements a different behavior by adding a
+`main.tcl` file. For example, here is an application that `hello` that
+does the obvious.
+
+```
+c:\src\tcl-sfe>tclsfe
+% package require sfe
+0.1
+% writeFile main.tcl "puts {Hello world!}"
+% sfe::make hello.exe main.tcl
+% exit
+
+c:\src\tcl-sfe>hello
+Hello world!
+```
 
 ## The SFE build system
 
@@ -111,7 +127,7 @@ This assumes other directories are in their default location relative to Tcl, so
 `Tk` sources are under `....\91b0\tk` and `thread3.0.5`, `twapi` etc. are under
 `....\91b0\tcl\pkgs`.
 
-### Adding custom static extensions
+### Adding static extensions
 
 To add your own static extension, the following changes are required.
 The extension must be buildable as a static library using the standard
