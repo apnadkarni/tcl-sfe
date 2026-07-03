@@ -65,6 +65,8 @@ TclPostInit(
     extern int Twapi_Init(Tcl_Interp * interp);
     Tcl_StaticLibrary(NULL, "Twapi", Twapi_Init, NULL);
 #endif
+
+    /* Overwrite auto_path to only include zipfs paths */
     Tcl_Obj *pathPtr = Tcl_NewListObj(2, NULL);
     Tcl_ListObjAppendElement(NULL, pathPtr,
                              Tcl_NewStringObj(
@@ -76,17 +78,21 @@ TclPostInit(
                                STRINGIFY(TCL_MAJOR_VERSION)
                                "/" TCL_VERSION,
                                -1);
-#if 0
-    /* This does not work because tm is lazy initialized on first call */
-    (void) Tcl_SetVar2Ex(interp, "::tcl::tm::paths", NULL,
-                         Tcl_NewListObj(1, &pathPtr), TCL_GLOBAL_ONLY);
-    return TCL_OK;
-#else
-    return Tcl_EvalEx(interp,
-                      "tcl::tm::path remove {*}[tcl::tm::path list];"
-                      "tcl::tm::roots //zipfs:/app",
-                      -1, TCL_EVAL_GLOBAL);
-#endif
+
+    /* Not tm is lazy initialized so we cannot directly set the tm::paths var  */
+    int ret = Tcl_EvalEx(interp,
+                         "tcl::tm::path remove {*}[tcl::tm::path list];"
+                         "tcl::tm::roots //zipfs:/app",
+                         -1, TCL_EVAL_GLOBAL);
+    if (ret == TCL_OK) {
+        pathPtr = Tcl_NewStringObj("//zipfs:/app/_sfeinit.tcl", -1);
+        Tcl_IncrRefCount(pathPtr);
+        if (Tcl_FSAccess(pathPtr, 0) == 0) {
+            ret = Tcl_FSEvalFile(interp, pathPtr);
+        }
+        Tcl_DecrRefCount(pathPtr);
+    }
+    return ret;
 }
 
 int

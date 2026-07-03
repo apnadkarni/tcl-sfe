@@ -5,6 +5,21 @@ system to create and customize them. These are completely statically linked
 (other than the C and Windows runtimes) and therefore avoid issues that arise
 from similar single file executables that write shared libraries to disk.
 
+Demo: markdown processor
+
+```
+c:\src\tcl-sfe>tclsfe
+% writeFile demo.md "# SFE markdown demo"
+% package require sfe
+0.1
+% writeFile main.tcl {package require Markdown; puts [::Markdown::convert [readFile [lindex $argv 0]]]}
+% sfe::make markdown.exe main.tcl c:/tcl/magic/lib/tcllib
+% exit
+
+c:\src\tcl-sfe>markdown demo.md
+<h1>SFE markdown demo</h1>
+```
+
 The `tclsfe.exe` and `tksfe.exe` programs are enhanced versions of `tclsh.exe`
 and `wish.exe` that include the following extensions by default:
 
@@ -14,13 +29,15 @@ and `wish.exe` that include the following extensions by default:
 - twapi
 
 The build system allows omission of any of these if smaller executables are
-desired. Further, SFE's can be customized by
+desired. Further, SFE's can be customized by adding
 
-- adding additional packages or Tcl modules
+- additional packages or Tcl modules
 
-- addition of a main script that implements a complete application
+- interpreter initalization scripts
 
-- adding statically linked extensions
+- a main script that implements a complete application
+
+- statically linked extensions
 
 ## Running SFE executables
 
@@ -42,7 +59,7 @@ packages and files in addition to the existing ones.
 
 ```
 package require sfe
-sfe::make NEWSFEPATH ?PATH ...? 
+sfe::make NEWSFEPATH ?PATH ...?
 ```
 
 `NEWFSEPPATH` is the executable to create. Each `PATH` may be a directory or a
@@ -90,6 +107,22 @@ c:\src\tcl-sfe>tclsfe
 
 c:\src\tcl-sfe>hello
 Hello world!
+```
+
+Note the `zipfs` file system is case-sensitive so `main.tcl` must be exactly
+that.
+
+## Customizing interpreter initalization
+
+In a similar manner, SFE's can be customized to initialize any created
+interpreters, both the primary and secondary, including those created by
+threads. This is done by adding a file `_sfeinit.tcl` in the custom SFE.
+Examples of initialization include automatic loading of included packages,
+importing of commands, modifying package search paths etc. There are really no
+restrictions as such but any exceptions raised will terminate the program.
+
+```
+% sfe::make custom.exe _sfeinit.tcl
 ```
 
 ## The SFE build system
