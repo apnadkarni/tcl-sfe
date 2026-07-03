@@ -27,7 +27,11 @@ desired. Further, SFE's can be customized by
 SFE programs are self-contained. They can be copied anywhere and run without any
 installation or unpackaging step. In other respects, unless **customized*, they
 are identical to their standard counterparts including handling of command line
-arguments, reading of the `tclshrc.tcl` and `wishrc.tcl` files at startup etc..
+arguments, reading of the `tclshrc.tcl` and `wishrc.tcl` files at startup etc.
+with one difference: the default paths set up for searching packages via
+`auto_path` and for Tcl modules via `tcl::tm::path` is limited to the SFE
+internal file system. This is to avoid interference from external sources.
+If desired, the values can be changed from within your own scripts.
 
 ## Adding a package or module
 

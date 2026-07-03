@@ -17,6 +17,11 @@ MODULE_SCOPE int TclMainHook(int *argc, WCHAR ***argv);
 MODULE_SCOPE int TclMainHook(int *argc, char ***argv);
 #endif
 
+#ifndef STRINGIFY
+#  define STRINGIFY(x) STRINGIFY1(x)
+#  define STRINGIFY1(x) #x
+#endif
+
 /*
  *----------------------------------------------------------------------
  *
@@ -60,7 +65,28 @@ TclPostInit(
     extern int Twapi_Init(Tcl_Interp * interp);
     Tcl_StaticLibrary(NULL, "Twapi", Twapi_Init, NULL);
 #endif
+    Tcl_Obj *pathPtr = Tcl_NewListObj(2, NULL);
+    Tcl_ListObjAppendElement(NULL, pathPtr,
+                             Tcl_NewStringObj(
+                                 "//zipfs:/app/tcl_library", -1));
+    Tcl_ListObjAppendElement(NULL, pathPtr,
+                             Tcl_NewStringObj("//zipfs:/app", -1));
+    (void) Tcl_SetVar2Ex(interp, "auto_path", NULL, pathPtr, TCL_GLOBAL_ONLY);
+    pathPtr = Tcl_NewStringObj("//zipfs:/app/tcl"
+                               STRINGIFY(TCL_MAJOR_VERSION)
+                               "/" TCL_VERSION,
+                               -1);
+#if 0
+    /* This does not work because tm is lazy initialized on first call */
+    (void) Tcl_SetVar2Ex(interp, "::tcl::tm::paths", NULL,
+                         Tcl_NewListObj(1, &pathPtr), TCL_GLOBAL_ONLY);
     return TCL_OK;
+#else
+    return Tcl_EvalEx(interp,
+                      "tcl::tm::path remove {*}[tcl::tm::path list];"
+                      "tcl::tm::roots //zipfs:/app",
+                      -1, TCL_EVAL_GLOBAL);
+#endif
 }
 
 int
