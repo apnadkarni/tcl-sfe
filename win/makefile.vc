@@ -9,6 +9,13 @@
 # distribution but customized by defining the TCL_LOCAL_MAIN_HOOK callback to be
 # the TclMainHook implemented in the tclSfeMainHook.c file.
 
+!if "$(TCLDIR)" == ""
+!error TCLDIR must be defined as point to the Tcl source directory
+!endif
+!if "$(TKDIR)" == ""
+!error TKDIR must be defined as point to the Tcl source directory
+!endif
+
 !if "$(STAGINGDIR)" == ""
 STAGINGDIR = ..\staging
 !endif
@@ -16,6 +23,7 @@ TCLSH_NATIVE=..\staging\bin\tclsh91s.exe
 PROJECT=sfe
 DOTVERSION=9.1
 NEED_TK=1
+RCFILE=sfe.rc
 
 !include $(TCLDIR)\win\rules-ext.vc
 
@@ -78,13 +86,13 @@ $(TMP_DIR)\tkSfeMain.obj: $(TKDIR)\win\winMain.c
 $(TMP_DIR)\tclSfeMainHook.obj: $(STAGINGDIR)\tclsfe_nmake.inc
 !endif
 
-$(TCLSFERAW): $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tclsfe.exe.manifest
-	$(CONEXECMD) -stack:2300000 $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj
+$(TCLSFERAW): $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tclsfe.exe.manifest $(TMP_DIR)\tclsfe.res
+	$(CONEXECMD) -stack:2300000 $(TMP_DIR)\tclSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tclsfe.res
 	copy $(TMP_DIR)\tclsfe.exe.manifest $(TCLSFERAW).manifest
 	$(_VC_MANIFEST_EMBED_EXE)
 
-$(TKSFERAW): $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tksfe.exe.manifest
-	$(GUIEXECMD) -stack:2300000 $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj
+$(TKSFERAW): $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tksfe.exe.manifest $(TMP_DIR)\tksfe.res
+	$(GUIEXECMD) -stack:2300000 $(TMP_DIR)\tkSfeMain.obj $(TMP_DIR)\tclSfeMainHook.obj $(TMP_DIR)\tksfe.res
 	copy $(TMP_DIR)\tksfe.exe.manifest $(TKSFERAW).manifest
 	$(_VC_MANIFEST_EMBED_EXE)
 
@@ -122,6 +130,12 @@ $(TMP_DIR)\tksfe.exe.manifest: $(WIN_DIR)\tksfe.exe.manifest.in
 @TCL_WIN_VERSION@ $(DOTVERSION).0.0
 @TK_WIN_VERSION@  $(DOTVERSION).0.0
 <<
+
+$(TMP_DIR)\tclsfe.res: $(WIN_DIR)\sfe.rc
+	$(RESCMD) -DSFE_BASE_PRODUCT=\"Tcl\" -DICOFILE=tclsfe.ico $(WIN_DIR)\sfe.rc
+
+$(TMP_DIR)\tksfe.res: $(WIN_DIR)\sfe.rc
+	$(RESCMD) -DSFE_BASE_PRODUCT=\"Tk\" -DICOFILE=tksfe.ico $(WIN_DIR)\sfe.rc
 
 install:
         if not exist "$(SFEINSTALLDIR)" $(MKDIR) "$(SFEINSTALLDIR)"
