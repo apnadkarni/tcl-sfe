@@ -7,8 +7,11 @@
 namespace eval sfe {}
 
 oo::class create sfe::SfeMaker {
+    variable newSfePath
     variable vfsDir
     variable iconPath
+    variable versionInfo
+
     constructor {} {
         my ExtractToVfs
     }
@@ -56,21 +59,26 @@ oo::class create sfe::SfeMaker {
         # passed in.
         set iconPath [file normalize $newIconPath]
     }
-    method buildSfe {newPath} {
+    method replaceVersion {newVersionInfo} {
+        set versionInfo $newVersionInfo
+    }
+    method buildSfe {toPath} {
         # Returns path to a SFE file that has the contents of the vfs directory
         # attached.
-        if {[string equal -nocase [file normalize [info nameofexecutable]] $newPath]} {
+        set toPath [file normalize $toPath]
+        if {[string equal -nocase [file normalize [info nameofexecutable]] $toPath]} {
             error "Cannot write to host executable."
         }
+        set newSfePath $toPath
         set dir [my getVfsDir]
-        if {![info exists iconPath]} {
-            # No icon to replace. Do the easy way.
-            puts NoICON
-            zipfs mkimg $newPath $dir $dir ""
+        if {![info exists iconPath] && ![info exists versionInfo]} {
+            # No version or icon to replace. Do the easy way.
+            zipfs mkimg $newSfePath $dir $dir ""
             return
         }
 
-        # To replace the icon, we need to split the zipfs from the executable.
+        # To replace the version or icon, we need to split the zipfs from the
+        # executable.
         lassign [zipfs info //zipfs:/app] - - - zipOffset
         set exeChan [open [info nameofexecutable] rb]
         try {
@@ -89,10 +97,14 @@ oo::class create sfe::SfeMaker {
             close $exeChan
         }
 
-        # Replace the icon in the split file
-        my ReplaceIconInStub $tempPath
+        if {[info exists versionInfo]} {
+            my ReplaceVersionInStub $tempPath
+        }
+        if {[info exists iconPath]} {
+            my ReplaceIconInStub $tempPath
+        }
         try {
-            zipfs mkimg $newPath $dir $dir "" $tempPath
+            zipfs mkimg $newSfePath $dir $dir "" $tempPath
         } finally {
             file delete $tempPath
         }
@@ -114,10 +126,180 @@ oo::class create sfe::SfeMaker {
             error "VFS path $toPath exists and either $toPath or $fromPath is a directory."
         }
     }
-    method ReplaceIconInStub {stubPath} {
+    method VersionInfoStringBlob {key val {nestedBytes {}}} {
+        # Returns a binary blob in the form used in resource string tables.
+        # WORD - length of the blob in bytes
+        # WORD - number of UTF-16LE units in value including terminating nul
+        # WORD - type (1 for strings)
+        # STRING - key UTF-16LE string
+        # ?PAD? - DWORD padding if needed
+        # STRING - value UTF-16LE string (may be empty)
+        # ?PAD? - if needed
+        if {$key eq ""} {
+            error "Empty key passed to VersionInfoStringBlob."
+        }
+        append key \0
+        if {$value ne ""} {
+            append value \0
+        }
+        set utf16key [encoding convertto utf-16le $key]
+        set utf16val [encoding convertto utf-16le $value]
+
+        # Calculate lengths of all the pieces and padding first
+
+        # Header fields and key
+        set blobLength [expr {6 + [string length $utf16key]}]
+        # Padding after key string
+        set padlen [expr {4 - ($blobLength & 3)}]
+        set padkey [expr {$padlen < 4 ? [string repeat \0 $padlen] : ""}]
+        incr blobLength [string length $padkey]
+
+        # Value string
+        incr blobLength [string length $utf16val]
+        # Padding after value string
+        set padlen [expr {4 - ($blobLength & 3)}]
+        set padval [expr {$padlen < 4 ? [string repeat \0 $padlen] : ""}]
+        incr blobLength [string length $padval]
+
+        # Nested bytes
+        incr blobLength [string length $nestedBytes]
+
+        if {$blobLength > 32767} {
+            error "String blob too big"
+        }
+
+        set padlen [expr {4 - ($blobLength & 3)}]
+        set padend [expr {$padlen < 4 ? [string repeat \0 $padlen] : ""}]
+        # DON'T increase blobLength to account for trailing pad
+
+        # Now we have all the length information, construct the blob
+        return [string cat \
+                    [binary format s3 \
+                         $blobLength \
+                         [expr {[string length $utf16val]/2}] \
+                         1] \
+                    $utf16key $padkey \
+                    $utf16val $padval \
+                    $nestedBytes $padend
+               ]
+    }
+    method BuildVersionResource {} {
+        # Returns a version resource binary.
+        # Caller should have ensured versionInfo variable exists
+
+        if {![dict exists $versionInfo FileVersion]} {
+            error "FileVersion information is missing."
+        }
+        set fileVersion [dict get $versionInfo FileVersion]
+        if {![regexp {^(\d+)\.(\d+)\.(\d+)\.(\d+)$} $fileVersion
+                  -> major minor build revision]} {
+            error "Invalid FileVersion, must of the form N.N.N.N"
+        }
+        set productVersion [dict getdef $versionInfo ProductVersion $fileVersion]
+        if {![regexp {^(\d+)\.(\d+)\.(\d+)\.(\d+)$} $version
+                  -> pmajor pminor pbuild prevision]} {
+            error "Invalid ProductVersion, must of the form N.N.N.N"
+        }
+
+        set ts [twapi::secs_since_1970_to_large_system_time [clock seconds]]
+        set tsLow [expr {$ts >> 32}]
+        set tsHigh [expr {wide(0xffffffff) & $ts}]
+
+        # Fixed component:
+        # Signature, StructVersion, FileVersionMS, FileVersionLS,
+        # ProductVersionMS, ProductVersionLS, FileFlagMask, FileFlags,
+        # FileOS, FileType, FileSubType, FileDateMS, FileDateLS
+        set fixedPart \
+            [binary format i13 \
+                 [list \
+                      0xFEEF04BD 0x00010000 \
+                      [expr {(($major & 0xFFFF) << 16) | ($minor & 0xFFFF)}] \
+                      [expr {(($build & 0xFFFF) << 16) | ($revision & 0xFFFF)}] \
+                      [expr {(($pmajor & 0xFFFF) << 16) | ($pminor & 0xFFFF)}] \
+                      [expr {(($pbuild & 0xFFFF) << 16) | ($prevision & 0xFFFF)}] \
+                      0x3F 0 0x00040004 1 0 $tsHigh $tsLow]]
+
+        # string table - mandatory fields
+        set stringData ""
+        append stringData \
+            [my VersionInfoStringBlob FileVersion $fileVersion] \
+            [my VersionInfoStringBlob ProductVersion $productVersion] \
+            [my VersionInfoStringBlob OriginalFileName [file tail $newSfePath]] \
+            [my VersionInfoStringBlob InternalName \
+                 [file tail [file rootname $newSfePath]]]
+        foreach {key defaultValue} {
+            CompanyName "The Tcl Community"
+            FileDescription "Tcl/Tk Single File Executable"
+            ProductName "Tcl/Tk Single File Application"
+        } {
+            append stringData \
+                [my VersionInfoStringBlob $key \
+                     [dict getdef $versionInfo $key $defaultValue]]
+        }
+        # string table - optional fields
+        if {[dict exists $versionInfo LegalCopyright]} {
+            append stringData \
+                [my VersionInfoStringBlob LegalCopyright \
+                     [dict get $versionInfo LegalCopyright]]
+        }
+
+        # Strings are contained within a StringTable
+        # Hex rep 0409 -> US English, 04b0 -> Unicode code page
+        set stringTable [my VersionInfoStringBlob "040904b0" "" $stringData]
+
+        # The StringTable is under a StringFileInfo
+        set stringFileInfo [my VersionInfoStringBlob "StringFileInfo" \
+                                "" $stringTable]
+
+        # Done with the StringTable, now deal with the VarFileInfo block
+        set varBlock [my VersionInfoBinaryBlob "Translation" \
+                          [binary format ss 0x0409 0x04b0]]
+        set varFileInfo [my VersionInfoStringBlob "VarFileInfo" "" $varBlock]
+
+        # Finally the whol enchilada
+        return [my VersionInfoBinaryBlob "VS_VERSION_INFO" $fixedPart \
+                   [string cat $stringFileInfo $varFileInfo]]
+    }
+    method ReplaceVersionInStub {stubPath} {
+        # Replaces the version information in the SFE executable stub.
         package require twapi
 
+        # Find the current version resources in the SFE for deletion.
+        set libh [twapi::load_library $stubPath -datafile]
+        try {
+            set resources [twapi::extract_resources $libh]
+            set versionResources [dict getdef $resources 16 {}]
+        } trap {TWAPI_WIN32 1812} {} {
+            # No resource section. That's ok
+        } trap {TWAPI_WIN32 1814} {} {
+            # No such resource in resource section. That's ok too
+        } finally {
+            twapi::free_library $libh
+        }
+
+        # Now do the actual update
+        set libh [twapi::begin_resource_update $stubPath]
+        try {
+            # First delete all existing version resources
+            if {[info exists versionResources]} {
+                dict for {versionId perLangDict} $versionResources {
+                    foreach langId [dict keys $perLangDict] {
+                        twapi::delete_resource $libh 16 $versionId $langId
+                    }
+                }
+            }
+            # Construct the mandatory fields.
+            twapi::update_resource $libh 16 [my BuildVersionResource]
+        } trap {} {msg} {
+            twapi::end_resource_update $libh -discard
+            error $msg
+        }
+        twapi::end_resource_update $libh
+    }
+    method ReplaceIconInStub {stubPath} {
         # Replaces the icon in the SFE executable stub.
+        package require twapi
+
         const sfeIconGroup SFE
         const sfeIconLang 1033
 
@@ -235,7 +417,8 @@ proc sfe::make {args} {
     while {[llength $args]} {
         set arg [lpop args 0]
         switch -glob $arg {
-            -icon {
+            -icon -
+            -version {
                 if {[llength $args] == 0} {
                     error "Missing argument for option $arg"
                 }
@@ -285,6 +468,9 @@ proc sfe::make {args} {
         }
         if {[info exists opts(-icon)]} {
             $sfe replaceIcon $opts(-icon)
+        }
+        if {[info exists opts(-version)]} {
+            $sfe replaceVersion $opts(-version)
         }
         $sfe buildSfe $outPath
     } finally {
