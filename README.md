@@ -33,6 +33,8 @@ desired. Further, SFE's can be customized by adding
 
 - additional packages or Tcl modules
 
+- custom icon and version resources
+
 - interpreter initalization scripts
 
 - a main script that implements a complete application
@@ -60,7 +62,7 @@ packages and files in addition to the existing ones.
 
 ```
 package require sfe
-sfe::make NEWSFEPATH ?PATH ...?
+sfe::make ?-icon ICONPATH? -version VERSIONINFO ?--? NEWSFEPATH ?PATH ...?
 ```
 
 `NEWFSEPPATH` is the executable to create. Each `PATH` may be a directory or a
@@ -112,6 +114,48 @@ Hello world!
 
 Note the `zipfs` file system is case-sensitive so `main.tcl` must be exactly
 that.
+
+## Customizing resources
+
+The icon and version resources embedded in the application executable can
+be customized. This requires the SFE to have been built including `twapi` or
+to have it otherwise available on the Tcl package search path.
+
+### Customizing application icon
+
+To change the icon for a custom application, pass the `-icon` option to `sfe::make`
+with the path to the new icon. For example,
+
+```
+sfe::make -icon myIcon.ico hello.exe main.tcl
+```
+
+*Note this assumes a single icon group in the application executable. With
+multiple icons, there is no guarantee that the specified icon will be written
+as the first in the file and therefore may not be the one displayed by Explorer.*
+
+### Customizing version information
+
+Information embedded in the version resource can similarly be modified with the
+use of the `-version` option. The corresponding value should be a dictionary
+with one or more of the following keys. `FileVersion` is mandated with the use
+of `-version`. Other keys required by
+[Microsoft](https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource)
+are defaulted as shown. Optional keys that are not present are omitted.
+
+|Key              |Description |
+|---------------- |----------- |
+|FileVersion      |File version in the form MAJOR.MINOR.BUILD.REVISION. Mandatory.            |
+|ProductVersion   |Product version. Defaults to the FileVersion            |
+|OriginalFilename |Original name of the file, not including a path. Defaults to name of output SFE.|
+|InternalName     |Internal module name. Defaults to OriginalFilename without extension.            |
+|CompanyName      |Defaults to the Tcl Community.            |
+|FileDescription  |Defaults to `Tcl/Tk Single File Executable`            |
+|ProductName      |Defaults to `Tcl/Tk Single File Application`            |
+|LegalCopyright   |Optional. |
+
+This information is displayed on the `Details` pane of a file properties window
+in Explorer.
 
 ## Customizing interpreter initalization
 
