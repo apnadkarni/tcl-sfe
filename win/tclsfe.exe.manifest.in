@@ -4,10 +4,10 @@
     <assemblyIdentity
 	    version="@TCL_WIN_VERSION@"
 	    processorArchitecture="@MACHINE@"
-	    name="Tcl.tclsh"
+	    name="Tcl.tclsfe"
 	    type="win32"
 	/>
-    <description>Tcl command line shell (tclsh)</description>
+    <description>Tcl single file executable</description>
     <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
 	<security>
 	    <requestedPrivileges>
@@ -20,13 +20,14 @@
     </trustInfo>
     <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
 	<application>
-	    <!-- Windows 10 -->
+	    <!-- Windows 10, Windows 11, Windows Server 2016, Windows Server 2019 and Windows Server 2022 -->
 	    <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
 	</application>
     </compatibility>
     <asmv3:application>
 	<asmv3:windowsSettings>
-	    <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
+	    <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+	    <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
 	    <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
 	</asmv3:windowsSettings>
     </asmv3:application>
