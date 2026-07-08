@@ -5,7 +5,6 @@
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
 
 namespace eval sfe {}
-
 oo::class create sfe::SfeMaker {
     variable newSfePath
     variable vfsDir
@@ -89,10 +88,11 @@ oo::class create sfe::SfeMaker {
             } finally {
                 close $chan
             }
-        } on error {} {
+        } on error {msg ropts} {
             if {[info exists tempPath]} {
                 file delete $tempPath
             }
+            return -options $ropts $msg
         } finally {
             close $exeChan
         }
@@ -126,7 +126,83 @@ oo::class create sfe::SfeMaker {
             error "VFS path $toPath exists and either $toPath or $fromPath is a directory."
         }
     }
+
+    method VersionInfoBlob {type key bytes nestedBytes} {
+        # Returns a binary blob in the form used in resource string tables.
+        # type - 0 for binaries, 1 for strings
+        # key - non-empty string that is the key
+        # bytes - bytes comprising the value. May be empty
+        # nestedBytes - bytes of nested blocks to be concatenated
+
+        # The blob has the following structure
+        # WORD - length of the blob in bytes
+        # WORD - number of UTF-16LE units in value including terminating nul
+        # WORD - type (1 for strings)
+        # STRING - key UTF-16LE string
+        # ?PAD? - DWORD padding if needed
+        # STRING - value UTF-16LE string (may be empty)
+        # ?PAD? - if needed
+        if {$key eq ""} {
+            error "Empty key passed to VersionInfoStringBlob."
+        }
+        append key \0
+        set utf16key [encoding convertto utf-16le $key]
+
+        # Calculate lengths of all the pieces and padding first
+
+        # Header fields and key
+        set blobLength [expr {6 + [string length $utf16key]}]
+        # Padding after key string
+        set padlen [expr {4 - ($blobLength & 3)}]
+        set padkey [expr {$padlen < 4 ? [string repeat \0 $padlen] : ""}]
+        incr blobLength [string length $padkey]
+
+        # Value string
+        incr blobLength [string length $bytes]
+        # Padding after value string
+        set padlen [expr {4 - ($blobLength & 3)}]
+        set padval [expr {$padlen < 4 ? [string repeat \0 $padlen] : ""}]
+        incr blobLength [string length $padval]
+
+        # Nested bytes
+        incr blobLength [string length $nestedBytes]
+
+        if {$blobLength > 32767} {
+            error "String blob too big"
+        }
+
+        set padlen [expr {4 - ($blobLength & 3)}]
+        set padend [expr {$padlen < 4 ? [string repeat \0 $padlen] : ""}]
+        # DON'T increase blobLength to account for trailing pad
+
+        set unitCount [string length $bytes]
+        if {$type} {
+            # For strings, length is in Unicode characters
+            set unitCount [expr {$unitCount/2}]
+        }
+        # Now we have all the length information, construct the blob
+        return [string cat \
+                    [binary format sss $blobLength $unitCount $type] \
+                    $utf16key $padkey \
+                    $bytes $padval \
+                    $nestedBytes $padend]
+    }
+
+    method VersionInfoBinaryBlob {key val {nestedBytes {}}} {
+        return [my VersionInfoBlob 0 $key $val $nestedBytes]
+    }
+
     method VersionInfoStringBlob {key val {nestedBytes {}}} {
+        # Strings need to have a \0 appended unless empty
+        if {$val ne ""} {
+            append val \0
+        }
+        return [my VersionInfoBlob 1 $key \
+                    [encoding convertto utf-16le $val] \
+                    $nestedBytes]
+    }
+
+    method XXVersionInfoStringBlob {key val {nestedBytes {}}} {
         # Returns a binary blob in the form used in resource string tables.
         # WORD - length of the blob in bytes
         # WORD - number of UTF-16LE units in value including terminating nul
@@ -174,7 +250,7 @@ oo::class create sfe::SfeMaker {
 
         # Now we have all the length information, construct the blob
         return [string cat \
-                    [binary format s3 \
+                    [binary format sss \
                          $blobLength \
                          [expr {[string length $utf16val]/2}] \
                          1] \
@@ -186,17 +262,16 @@ oo::class create sfe::SfeMaker {
     method BuildVersionResource {} {
         # Returns a version resource binary.
         # Caller should have ensured versionInfo variable exists
-
         if {![dict exists $versionInfo FileVersion]} {
             error "FileVersion information is missing."
         }
         set fileVersion [dict get $versionInfo FileVersion]
-        if {![regexp {^(\d+)\.(\d+)\.(\d+)\.(\d+)$} $fileVersion
+        if {![regexp {^(\d+)\.(\d+)\.(\d+)\.(\d+)$} $fileVersion \
                   -> major minor build revision]} {
             error "Invalid FileVersion, must of the form N.N.N.N"
         }
         set productVersion [dict getdef $versionInfo ProductVersion $fileVersion]
-        if {![regexp {^(\d+)\.(\d+)\.(\d+)\.(\d+)$} $version
+        if {![regexp {^(\d+)\.(\d+)\.(\d+)\.(\d+)$} $productVersion \
                   -> pmajor pminor pbuild prevision]} {
             error "Invalid ProductVersion, must of the form N.N.N.N"
         }
@@ -224,7 +299,7 @@ oo::class create sfe::SfeMaker {
         append stringData \
             [my VersionInfoStringBlob FileVersion $fileVersion] \
             [my VersionInfoStringBlob ProductVersion $productVersion] \
-            [my VersionInfoStringBlob OriginalFileName [file tail $newSfePath]] \
+            [my VersionInfoStringBlob OriginalFilename [file tail $newSfePath]] \
             [my VersionInfoStringBlob InternalName \
                  [file tail [file rootname $newSfePath]]]
         foreach {key defaultValue} {
@@ -245,7 +320,7 @@ oo::class create sfe::SfeMaker {
 
         # Strings are contained within a StringTable
         # Hex rep 0409 -> US English, 04b0 -> Unicode code page
-        set stringTable [my VersionInfoStringBlob "040904b0" "" $stringData]
+        set stringTable [my VersionInfoStringBlob "040904B0" "" $stringData]
 
         # The StringTable is under a StringFileInfo
         set stringFileInfo [my VersionInfoStringBlob "StringFileInfo" \
@@ -261,7 +336,6 @@ oo::class create sfe::SfeMaker {
                    [string cat $stringFileInfo $varFileInfo]]
     }
     method ReplaceVersionInStub {stubPath} {
-        # Replaces the version information in the SFE executable stub.
         package require twapi
 
         # Find the current version resources in the SFE for deletion.
@@ -288,11 +362,12 @@ oo::class create sfe::SfeMaker {
                     }
                 }
             }
-            # Construct the mandatory fields.
-            twapi::update_resource $libh 16 [my BuildVersionResource]
-        } trap {} {msg} {
+            # 1 -> Name of VERSION resource (always)
+            # 1033 -> language id
+            twapi::update_resource $libh 16 1 1033 [my BuildVersionResource]
+        } trap {} {msg ropts} {
             twapi::end_resource_update $libh -discard
-            error $msg
+            return -options $ropts $msg
         }
         twapi::end_resource_update $libh
     }
@@ -397,9 +472,9 @@ oo::class create sfe::SfeMaker {
             # Write out the group icon resource
             twapi::update_resource $libh 14 \
                 $sfeIconGroup $sfeIconLang $groupHeader
-        } trap {} {msg} {
+        } trap {} {msg ropts} {
             twapi::end_resource_update $libh -discard
-            error $msg
+            return -options $ropts $msg
         }
         twapi::end_resource_update $libh
     }
@@ -422,7 +497,7 @@ proc sfe::make {args} {
                 if {[llength $args] == 0} {
                     error "Missing argument for option $arg"
                 }
-                set opts(-icon) [lpop args 0]
+                set opts($arg) [lpop args 0]
             }
             -- {
                 if {[llength $args]} {
