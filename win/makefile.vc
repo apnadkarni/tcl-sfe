@@ -139,8 +139,8 @@ $(TMP_DIR)\tksfe.res: $(WIN_DIR)\sfe.rc
 
 install:
         if not exist "$(SFEINSTALLDIR)" $(MKDIR) "$(SFEINSTALLDIR)"
-        $(COPY) $(TCLSFE) $(SFEINSTALLDIR)
-        $(COPY) $(TKSFE) $(SFEINSTALLDIR)
+        $(COPY) $(TCLSFE) $(SFEINSTALLDIR)\tclsfe-$(VSCMD_ARG_TGT_ARCH).exe
+        $(COPY) $(TKSFE) $(SFEINSTALLDIR)\tksfe-$(VSCMD_ARG_TGT_ARCH).exe
 
 .PHONY:
 

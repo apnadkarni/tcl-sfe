@@ -157,6 +157,15 @@ are defaulted as shown. Optional keys that are not present are omitted.
 This information is displayed on the `Details` pane of a file properties window
 in Explorer.
 
+For example,
+
+```
+% sfe::make -icon myIcon.ico -version {
+    FileVersion 1.2.3.4
+    ProductName "Hello!"
+} hello.exe main.tcl
+```
+
 ## Customizing interpreter initalization
 
 In a similar manner, SFE's can be customized to initialize any created
